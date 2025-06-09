@@ -1,0 +1,57 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "${default}",
+                "limitSymbolsToIncludedHeaders": false
+            },
+            "includePath": [
+                "/home/krishna/moveit_ws/install/pilz_industrial_motion_planner_testutils/include/**",
+                "/home/krishna/moveit_ws/install/pilz_industrial_motion_planner/include/**",
+                "/home/krishna/moveit_ws/install/moveit_visual_tools/include/**",
+                "/home/krishna/moveit_ws/install/moveit_task_constructor_visualization/include/**",
+                "/home/krishna/moveit_ws/install/moveit_task_constructor_demo/include/**",
+                "/home/krishna/moveit_ws/install/moveit_task_constructor_core/include/**",
+                "/home/krishna/moveit_ws/install/moveit_ros_control_interface/include/**",
+                "/home/krishna/moveit_ws/install/moveit_simple_controller_manager/include/**",
+                "/home/krishna/moveit_ws/install/moveit_setup_assistant/include/**",
+                "/home/krishna/moveit_ws/install/moveit_setup_srdf_plugins/include/**",
+                "/home/krishna/moveit_ws/install/moveit_setup_core_plugins/include/**",
+                "/home/krishna/moveit_ws/install/moveit_setup_controllers/include/**",
+                "/home/krishna/moveit_ws/install/moveit_setup_app_plugins/include/**",
+                "/home/krishna/moveit_ws/install/moveit_setup_framework/include/**",
+                "/home/krishna/moveit_ws/install/moveit_servo/include/**",
+                "/home/krishna/moveit_ws/install/moveit_ros_visualization/include/**",
+                "/home/krishna/moveit_ws/install/moveit_hybrid_planning/include/**",
+                "/home/krishna/moveit_ws/install/moveit_ros_planning_interface/include/**",
+                "/home/krishna/moveit_ws/install/moveit_ros_benchmarks/include/**",
+                "/home/krishna/moveit_ws/install/moveit_ros_warehouse/include/**",
+                "/home/krishna/moveit_ws/install/moveit_ros_robot_interaction/include/**",
+                "/home/krishna/moveit_ws/install/moveit_ros_perception/include/**",
+                "/home/krishna/moveit_ws/install/moveit_ros_move_group/include/**",
+                "/home/krishna/moveit_ws/install/moveit_planners_ompl/include/**",
+                "/home/krishna/moveit_ws/install/moveit_ros_planning/include/**",
+                "/home/krishna/moveit_ws/install/moveit_ros_occupancy_map_monitor/include/**",
+                "/home/krishna/moveit_ws/install/moveit_kinematics/include/**",
+                "/home/krishna/moveit_ws/install/chomp_motion_planner/include/**",
+                "/home/krishna/moveit_ws/install/moveit_core/include/**",
+                "/home/krishna/moveit_ws/install/srdfdom/include/**",
+                "/home/krishna/moveit_ws/install/rviz_marker_tools/include/**",
+                "/home/krishna/moveit_ws/install/rosparam_shortcuts/include/**",
+                "/home/krishna/moveit_ws/install/moveit_task_constructor_msgs/include/**",
+                "/home/krishna/speed_ws/install/ur5_notebook/include/**",
+                "/home/krishna/speed_ws/install/ur5_blocks/include/**",
+                "/opt/ros/humble/include/**",
+                "/home/krishna/ur_ws/src/ur_sim/include/**",
+                "/usr/include/**"
+            ],
+            "name": "ROS",
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "c++14",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
+}

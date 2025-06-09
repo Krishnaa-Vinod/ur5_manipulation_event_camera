@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Site BuildName="(empty)"
+	BuildStamp="20250607-0213-Experimental"
+	Name="krishna-ROG"
+	Generator="ctest-3.22.1"
+	CompilerName="/usr/bin/c++"
+	CompilerVersion="11.4.0"
+	OSName="Linux"
+	Hostname="krishna-ROG"
+	OSRelease="6.8.0-60-generic"
+	OSVersion="#63~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Apr 22 19:00:15 UTC 2"
+	OSPlatform="x86_64"
+	Is64Bits="1"
+	VendorString="AuthenticAMD"
+	VendorID="Advanced Micro Devices"
+	FamilyID="25"
+	ModelID="117"
+	ProcessorCacheSize="1024"
+	NumberOfLogicalCPU="16"
+	NumberOfPhysicalCPU="8"
+	TotalVirtualMemory="2047"
+	TotalPhysicalMemory="31378"
+	LogicalProcessorsPerPhysical="2"
+	ProcessorClockFrequency="2657.45"
+	>
+	<Testing>
+		<StartDateTime>Jun 07 00:43 MST</StartDateTime>
+		<StartTestTime>1749282221</StartTestTime>
+		<TestList/>
+		<EndDateTime>Jun 07 00:43 MST</EndDateTime>
+		<EndTestTime>1749282221</EndTestTime>
+		<ElapsedMinutes>0</ElapsedMinutes>
+	</Testing>
+</Site>

@@ -1,0 +1,33 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/krishna/moveit_ws/install/moveit_task_constructor_core/local/lib/python3.10/dist-packages",
+        "/home/krishna/moveit_ws/install/moveit_configs_utils/lib/python3.10/site-packages",
+        "/home/krishna/moveit_ws/install/srdfdom/local/lib/python3.10/dist-packages",
+        "/home/krishna/moveit_ws/install/moveit_task_constructor_msgs/local/lib/python3.10/dist-packages",
+        "/home/krishna/moveit_ws/install/launch_param_builder/lib/python3.10/site-packages",
+        "/home/krishna/speed_ws/build/ur5_vision2",
+        "/home/krishna/speed_ws/install/ur5_vision2/lib/python3.10/site-packages",
+        "/home/krishna/speed_ws/install/ur5_notebook/local/lib/python3.10/dist-packages",
+        "/home/krishna/speed_ws/build/ur5_gripper2",
+        "/home/krishna/speed_ws/install/ur5_gripper2/lib/python3.10/site-packages",
+        "/home/krishna/speed_ws/install/ur5_blocks/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/krishna/moveit_ws/install/moveit_task_constructor_core/local/lib/python3.10/dist-packages",
+        "/home/krishna/moveit_ws/install/moveit_configs_utils/lib/python3.10/site-packages",
+        "/home/krishna/moveit_ws/install/srdfdom/local/lib/python3.10/dist-packages",
+        "/home/krishna/moveit_ws/install/moveit_task_constructor_msgs/local/lib/python3.10/dist-packages",
+        "/home/krishna/moveit_ws/install/launch_param_builder/lib/python3.10/site-packages",
+        "/home/krishna/speed_ws/build/ur5_vision2",
+        "/home/krishna/speed_ws/install/ur5_vision2/lib/python3.10/site-packages",
+        "/home/krishna/speed_ws/install/ur5_notebook/local/lib/python3.10/dist-packages",
+        "/home/krishna/speed_ws/build/ur5_gripper2",
+        "/home/krishna/speed_ws/install/ur5_gripper2/lib/python3.10/site-packages",
+        "/home/krishna/speed_ws/install/ur5_blocks/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "cmake.sourceDirectory": "/home/krishna/ur_ws/src/Universal_Robots_ROS2_Description"
+}
