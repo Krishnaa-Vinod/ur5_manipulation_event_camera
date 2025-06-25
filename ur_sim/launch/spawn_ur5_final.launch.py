@@ -41,7 +41,7 @@ def generate_launch_description():
     )
 
     moveit_config = (
-        MoveItConfigsBuilder("custom_robot", package_name="ur5_camera_gripper_moveit_config")
+        MoveItConfigsBuilder("ur5_camera_gripper_moveit_config", package_name="ur5_camera_gripper_moveit_config")
         .robot_description(file_path="config/ur.urdf.xacro")
         .robot_description_semantic(file_path="config/ur.srdf")
         .trajectory_execution(file_path="config/moveit_controllers.yaml")

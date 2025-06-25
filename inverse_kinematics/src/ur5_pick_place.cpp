@@ -1,4 +1,5 @@
 #include <memory>
+#include <thread>
 #include <chrono>
 #include <vector>
 
@@ -20,35 +21,39 @@
 
 using namespace std::chrono_literals;
 
-class BoxPickPlace : public rclcpp::Node
+class BoxPickPlace
 {
 public:
-  BoxPickPlace()
-  : Node("box_pick_place"),
-    mg_(std::make_shared<moveit::planning_interface::MoveGroupInterface>(
-          shared_from_this(), "ur_manipulator")),
-    psi_(std::make_shared<moveit::planning_interface::PlanningSceneInterface>())
+  BoxPickPlace(rclcpp::Node::SharedPtr node)
+  : node_(std::move(node)),
+    mg_(node_, "ur_manipulator"),
+    psi_()
   {
-    attach_client_ = create_client<linkattacher_msgs::srv::AttachLink>("/ATTACHLINK");
-    detach_client_ = create_client<linkattacher_msgs::srv::DetachLink>("/DETACHLINK");
+    // set up service clients
+    attach_client_ = node_->create_client<linkattacher_msgs::srv::AttachLink>("/ATTACHLINK");
+    detach_client_ = node_->create_client<linkattacher_msgs::srv::DetachLink>("/DETACHLINK");
 
+    // add the belt and cube to the MoveIt planning scene
     addCollisionObjects();
+  }
+
+  void run()
+  {
+    // give planning scene time to register
     rclcpp::sleep_for(1s);
 
     pick();
-    rclcpp::sleep_for(1s);
     attachObject();
-    rclcpp::sleep_for(1s);
     place();
-    rclcpp::sleep_for(1s);
     detachObject();
   }
 
 private:
-  std::shared_ptr<moveit::planning_interface::MoveGroupInterface>    mg_;
-  std::shared_ptr<moveit::planning_interface::PlanningSceneInterface> psi_;
-  rclcpp::Client<linkattacher_msgs::srv::AttachLink>::SharedPtr      attach_client_;
-  rclcpp::Client<linkattacher_msgs::srv::DetachLink>::SharedPtr      detach_client_;
+  rclcpp::Node::SharedPtr node_;
+  moveit::planning_interface::MoveGroupInterface       mg_;
+  moveit::planning_interface::PlanningSceneInterface   psi_;
+  rclcpp::Client<linkattacher_msgs::srv::AttachLink>::SharedPtr attach_client_;
+  rclcpp::Client<linkattacher_msgs::srv::DetachLink>::SharedPtr detach_client_;
 
   void addCollisionObjects()
   {
@@ -64,7 +69,9 @@ private:
     SolidPrimitive p; p.type = p.BOX; p.dimensions = {0.03,0.03,0.03};
     cube.primitives      = {p};
     cube.primitive_poses.resize(1);
-    cube.primitive_poses[0].position = {0.0,0.0,0.76};
+    cube.primitive_poses[0].position.x    = 0.0;
+    cube.primitive_poses[0].position.y    = 0.0;
+    cube.primitive_poses[0].position.z    = 0.76;
     cube.primitive_poses[0].orientation.w = 1.0;
     cube.operation = cube.ADD;
     objs.push_back(cube);
@@ -76,13 +83,15 @@ private:
     p.dimensions         = {0.60,2.00,1.00};
     belt.primitives      = {p};
     belt.primitive_poses.resize(1);
+    belt.primitive_poses[0].position.x    = 0.0;
+    belt.primitive_poses[0].position.y    = 0.0;
     belt.primitive_poses[0].position.z    = 0.50;
     belt.primitive_poses[0].orientation.w = 1.0;
     belt.operation = belt.ADD;
     objs.push_back(belt);
 
-    psi_->applyCollisionObjects(objs);
-    RCLCPP_INFO(get_logger(), "Scene: cube + belt added");
+    psi_.applyCollisionObjects(objs);
+    RCLCPP_INFO(node_->get_logger(), "Added cube and belt to planning scene");
   }
 
   void pick()
@@ -91,8 +100,13 @@ private:
     tf2::Quaternion q; q.setRPY(M_PI,0,0);
     T.orientation = tf2::toMsg(q);
 
-    T.position = {0.0,0.0,0.86};  planAndMove(T,"pre-pick");
-    T.position.z = 0.76;          planAndMove(T,"pick");
+    // hover 10cm above cube
+    T.position.x = 0.0; T.position.y = 0.0; T.position.z = 0.86;
+    planAndMove(T, "pre-pick");
+
+    // descend to grasp
+    T.position.z = 0.76;
+    planAndMove(T, "pick");
   }
 
   void place()
@@ -101,8 +115,13 @@ private:
     tf2::Quaternion q; q.setRPY(M_PI,0,0);
     T.orientation = tf2::toMsg(q);
 
-    T.position = {0.0,0.2,0.86}; planAndMove(T,"pre-place");
-    T.position.z = 0.76;         planAndMove(T,"place");
+    // hover 10cm above place target (0,0.2,0.76)
+    T.position.x = 0.0; T.position.y = 0.2; T.position.z = 0.86;
+    planAndMove(T, "pre-place");
+
+    // descend to place
+    T.position.z = 0.76;
+    planAndMove(T, "place");
   }
 
   void attachObject()
@@ -114,12 +133,11 @@ private:
     req->link2_name  = "box";
 
     waitForService(attach_client_, "ATTACHLINK");
-    auto f = attach_client_->async_send_request(req);
-    if (rclcpp::spin_until_future_complete(shared_from_this(), f)
-        == rclcpp::FutureReturnCode::SUCCESS)
-      RCLCPP_INFO(get_logger(), "Object attached");
+    auto fut = attach_client_->async_send_request(req);
+    if (rclcpp::spin_until_future_complete(node_, fut) == rclcpp::FutureReturnCode::SUCCESS)
+      RCLCPP_INFO(node_->get_logger(), "Object attached");
     else
-      RCLCPP_ERROR(get_logger(), "Attach failed");
+      RCLCPP_ERROR(node_->get_logger(), "Attach failed");
   }
 
   void detachObject()
@@ -131,40 +149,51 @@ private:
     req->link2_name  = "box";
 
     waitForService(detach_client_, "DETACHLINK");
-    auto f = detach_client_->async_send_request(req);
-    if (rclcpp::spin_until_future_complete(shared_from_this(), f)
-        == rclcpp::FutureReturnCode::SUCCESS)
-      RCLCPP_INFO(get_logger(), "Object detached");
+    auto fut = detach_client_->async_send_request(req);
+    if (rclcpp::spin_until_future_complete(node_, fut) == rclcpp::FutureReturnCode::SUCCESS)
+      RCLCPP_INFO(node_->get_logger(), "Object detached");
     else
-      RCLCPP_ERROR(get_logger(), "Detach failed");
+      RCLCPP_ERROR(node_->get_logger(), "Detach failed");
   }
 
-  // — corrected template so ServiceT is deduced —
   template<typename ServiceT>
   void waitForService(
     const std::shared_ptr<rclcpp::Client<ServiceT>> &client,
     const std::string &name)
   {
     while (!client->wait_for_service(1s)) {
-      RCLCPP_WARN(get_logger(), "Waiting for %s…", name.c_str());
+      RCLCPP_WARN(node_->get_logger(), "Waiting for %s...", name.c_str());
     }
   }
 
   void planAndMove(const geometry_msgs::msg::Pose &T, const char *label)
   {
-    mg_->setPoseTarget(T);
+    mg_.setPoseTarget(T);
     moveit::planning_interface::MoveGroupInterface::Plan plan;
-    bool ok = mg_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS;
-    RCLCPP_INFO(get_logger(), "%s plan %s", label, ok?"OK":"FAILED");
-    if (ok) mg_->execute(plan);
-    mg_->clearPoseTargets();
+    bool ok = (mg_.plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
+    RCLCPP_INFO(node_->get_logger(), "%s plan %s", label, ok?"OK":"FAILED");
+    if (ok) mg_.execute(plan);
+    mg_.clearPoseTargets();
   }
 };
 
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<BoxPickPlace>());
+  auto node = std::make_shared<rclcpp::Node>("box_pick_place_node");
+  auto app  = std::make_shared<BoxPickPlace>(node);
+
+  // start spinning before running
+  rclcpp::executors::SingleThreadedExecutor exec;
+  exec.add_node(node);
+  std::thread spin_thread([&exec]() { exec.spin(); });
+
+  // now do the pick & place
+  app->run();
+
+  // shutdown
+  exec.cancel();
+  spin_thread.join();
   rclcpp::shutdown();
   return 0;
 }
