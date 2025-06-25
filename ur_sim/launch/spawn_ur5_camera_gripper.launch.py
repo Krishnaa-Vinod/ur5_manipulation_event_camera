@@ -16,9 +16,8 @@ from moveit_configs_utils import MoveItConfigsBuilder
 def generate_launch_description():
     ld = LaunchDescription()
 
-
     joint_controllers_file = os.path.join(
-        get_package_share_directory('ur_sim'), 'config', 'ur5_controllers.yaml'
+        get_package_share_directory('ur_sim'), 'config', 'ur5_controllers_gripper.yaml'
     )
     gazebo_launch_file = os.path.join(
         get_package_share_directory('gazebo_ros'), 'launch', 'gazebo.launch.py'
@@ -57,7 +56,7 @@ def generate_launch_description():
     )
 
     rviz_config_path = os.path.join(
-        get_package_share_directory("ur5_camera_moveit_config"),
+        get_package_share_directory("ur5_camera_gripper_moveit_config"),
         "config",
         "moveit.rviz",
     )
@@ -123,6 +122,13 @@ def generate_launch_description():
         output="screen",
     )
 
+    gripper_position_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["gripper_position_controller", "--controller-manager", "/controller_manager"],
+        output="screen",
+    )
+
     use_sim_time={"use_sim_time": True}
     config_dict = moveit_config.to_dict()
     config_dict.update(use_sim_time)
@@ -150,6 +156,13 @@ def generate_launch_description():
         )
     )
 
+    delay_gripper_controller = RegisterEventHandler(
+        OnProcessStart(
+            target_action=joint_state_broadcaster_spawner,
+            on_start=[gripper_position_controller_spawner],
+        )
+    )
+
     delay_rviz_node = RegisterEventHandler(
         OnProcessStart(
             target_action=robot_state_publisher,
@@ -170,6 +183,7 @@ def generate_launch_description():
     # delay of the controllers
     ld.add_action(delay_joint_state_broadcaster)
     ld.add_action(delay_arm_controller)
+    ld.add_action(delay_gripper_controller)
     ld.add_action(delay_rviz_node)
 
 

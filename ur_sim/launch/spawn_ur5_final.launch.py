@@ -13,15 +13,31 @@ import xacro
 from launch.event_handlers import OnProcessStart
 from moveit_configs_utils import MoveItConfigsBuilder
 
+
 def generate_launch_description():
     ld = LaunchDescription()
 
-
     joint_controllers_file = os.path.join(
-        get_package_share_directory('ur_sim'), 'config', 'ur5_controllers.yaml'
+        get_package_share_directory('ur_sim'), 'config', 'ur5_controllers_gripper.yaml'
     )
     gazebo_launch_file = os.path.join(
         get_package_share_directory('gazebo_ros'), 'launch', 'gazebo.launch.py'
+    )
+    
+    conveyor_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("conveyorbelt_gazebo"),
+                "launch",
+                "conveyorbelt.launch.py",
+            )
+        ),
+        launch_arguments={                # same flags you used before
+            "use_sim_time": "true",
+            "debug": "false",
+            "gui": "true",
+            "paused": "true",
+        }.items(),
     )
 
     moveit_config = (
@@ -31,14 +47,13 @@ def generate_launch_description():
         .trajectory_execution(file_path="config/moveit_controllers.yaml")
         .robot_description_kinematics(file_path="config/kinematics.yaml")
         .planning_scene_monitor(
-            publish_robot_description= True, publish_robot_description_semantic=True, publish_planning_scene=True
+            publish_robot_description=True, publish_robot_description_semantic=True, publish_planning_scene=True
         )
         .planning_pipelines(
             pipelines=["ompl", "chomp", "pilz_industrial_motion_planner"]
         )
         .to_moveit_configs()
     )
-
 
     x_arg = DeclareLaunchArgument('x', default_value='0', description='X position of the robot')
     y_arg = DeclareLaunchArgument('y', default_value='0', description='Y position of the robot')
@@ -52,12 +67,12 @@ def generate_launch_description():
             'debug': 'false',
             'gui': 'true',
             'paused': 'true',
-            #'world' : world_file
+            # 'world': world_file
         }.items()
     )
 
     rviz_config_path = os.path.join(
-        get_package_share_directory("ur5_camera_moveit_config"),
+        get_package_share_directory("ur5_camera_gripper_moveit_config"),
         "config",
         "moveit.rviz",
     )
@@ -76,7 +91,7 @@ def generate_launch_description():
         ],
     )
 
-    # spawn the robot
+    # Spawn the robot in Gazebo
     spawn_the_robot = Node(
         package='gazebo_ros',
         executable='spawn_entity.py',
@@ -90,7 +105,7 @@ def generate_launch_description():
         output='screen',
     )
 
-    # controller manager
+    # Controller manager
     controller_manager_node = Node(
         package='controller_manager',
         executable='ros2_control_node',
@@ -101,7 +116,7 @@ def generate_launch_description():
         ],
     )
 
-    # Robot state publisher
+    # Robot-state publisher
     robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -123,7 +138,14 @@ def generate_launch_description():
         output="screen",
     )
 
-    use_sim_time={"use_sim_time": True}
+    gripper_position_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["gripper_position_controller", "--controller-manager", "/controller_manager"],
+        output="screen",
+    )
+
+    use_sim_time = {"use_sim_time": True}
     config_dict = moveit_config.to_dict()
     config_dict.update(use_sim_time)
 
@@ -135,7 +157,7 @@ def generate_launch_description():
         arguments=["--ros-args", "--log-level", "info"],
     )
 
-
+    # Delayed spawner events
     delay_joint_state_broadcaster = RegisterEventHandler(
         OnProcessStart(
             target_action=controller_manager_node,
@@ -150,6 +172,13 @@ def generate_launch_description():
         )
     )
 
+    delay_gripper_controller = RegisterEventHandler(
+        OnProcessStart(
+            target_action=joint_state_broadcaster_spawner,
+            on_start=[gripper_position_controller_spawner],
+        )
+    )
+
     delay_rviz_node = RegisterEventHandler(
         OnProcessStart(
             target_action=robot_state_publisher,
@@ -157,21 +186,20 @@ def generate_launch_description():
         )
     )
 
-
-    # Launch Description
+    # Launch description assembly
     ld.add_action(x_arg)
     ld.add_action(y_arg)
     ld.add_action(z_arg)
-    ld.add_action(gazebo)
-    ld.add_action(controller_manager_node)  # has to be loaded first
+    ld.add_action(conveyor_launch)
+    ld.add_action(controller_manager_node)   # must start first
     ld.add_action(spawn_the_robot)
     ld.add_action(robot_state_publisher)
     ld.add_action(move_group_node)
-    # delay of the controllers
+
+    # delayed controllers & RViz
     ld.add_action(delay_joint_state_broadcaster)
     ld.add_action(delay_arm_controller)
+    ld.add_action(delay_gripper_controller)
     ld.add_action(delay_rviz_node)
-
-
 
     return ld
