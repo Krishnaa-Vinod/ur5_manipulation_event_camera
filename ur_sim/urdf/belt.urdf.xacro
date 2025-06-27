@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <!--
+    Macro “conveyor_belt” that you can include & invoke from other XACROs.
+    Parameters have sensible defaults matching your original file.
+  -->
+  <xacro:macro name="conveyor_belt"
+               params="mesh_pkg='ur_sim'
+                       mesh_stem='meshes/belt/conveyor_belt'
+                       x='1.0' y='0.5' z='0.2'
+                       roll='0' pitch='0' yaw='0'">
+    <!-- link visual+collision -->
+    <link name="conveyor_belt_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://ur_sim/meshes/belt/conveyor_belt.stl"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.5 0.5 0.5 1"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://ur_sim/meshes/belt/conveyor_belt.dae"/>
+        </geometry>
+      </collision>
+      <!-- inertial omitted for RViz-only -->
+    </link>
+
+    <!-- fixed joint attaching belt to the “world” frame -->
+    <joint name="conveyor_belt_fixed" type="fixed">
+      <parent link="world"/>
+      <child  link="conveyor_belt_link"/>
+      <origin xyz="${x} ${y} ${z}" rpy="${roll} ${pitch} ${yaw}"/>
+    </joint>
+  </xacro:macro>
+</robot>
