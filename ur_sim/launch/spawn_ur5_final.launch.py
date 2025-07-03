@@ -13,8 +13,17 @@ def generate_launch_description():
     # Build the MoveIt configuration
     # This builder now correctly finds and loads all your YAML files automatically by name
     moveit_config = (
-        MoveItConfigsBuilder("ur5_camera_gripper_moveit_config", package_name="ur5_camera_gripper_moveit_config")
+        MoveItConfigsBuilder("custom_robot", package_name="ur5_camera_gripper_moveit_config")
         .robot_description(file_path="config/ur.urdf.xacro")
+        .robot_description_semantic(file_path="config/ur.srdf")
+        .trajectory_execution(file_path="config/moveit_controllers.yaml")
+        .robot_description_kinematics(file_path="config/kinematics.yaml")
+        .planning_scene_monitor(
+            publish_robot_description= True, publish_robot_description_semantic=True, publish_planning_scene=True
+        )
+        .planning_pipelines(
+            pipelines=["ompl", "chomp", "pilz_industrial_motion_planner"]
+        )
         .to_moveit_configs()
     )
 
@@ -30,8 +39,6 @@ def generate_launch_description():
         parameters=[move_group_params],
         arguments=["--ros-args", "--log-level", "info"],
     )
-
-    # Define other nodes, ensuring use_sim_time is passed where needed
 
     # RViz Node
     rviz_config_file = os.path.join(
