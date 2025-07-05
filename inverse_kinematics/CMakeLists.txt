@@ -11,6 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(moveit_msgs REQUIRED)
 find_package(gazebo_msgs REQUIRED)
+find_package(linkattacher_msgs REQUIRED)
 
 # Add the executable for your C++ node
 add_executable(ur5_pick_place src/ur5_pick_place.cpp)
@@ -46,6 +47,7 @@ ament_target_dependencies(simple_pick_place
   moveit_core
   moveit_ros_planning_interface
   geometry_msgs
+  linkattacher_msgs
 )
 
 find_package(moveit_ros_planning_interface REQUIRED)
@@ -69,6 +71,7 @@ install(TARGETS
 
 install(TARGETS move_to_location
   simple_move_with_gripper
+  simple_pick_place
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 

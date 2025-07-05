@@ -1,105 +1,150 @@
-// File: src/simple_pick_place.cpp
+// src/simple_pick_place.cpp
+
+#include <memory>
+#include <thread>
+#include <chrono>
+#include <iostream>
 
 #include <rclcpp/rclcpp.hpp>
-#include <geometry_msgs/msg/pose.hpp>
 #include <moveit/move_group_interface/move_group_interface.h>
+#include <geometry_msgs/msg/pose.hpp>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <linkattacher_msgs/srv/attach_link.hpp>
+#include <linkattacher_msgs/srv/detach_link.hpp>
 
-class SimplePickPlace : public rclcpp::Node
-{
-public:
-  SimplePickPlace(const rclcpp::NodeOptions & options)
-  : Node("simple_pick_place", options)
-  {
-    // no manual declare_parameter() calls here!
-  }
+using namespace std::chrono_literals;
+static constexpr double PI           = 3.141592653589793;
+static constexpr double OFFSET_Z     = 0.05;    // 5 cm lift
+static constexpr double GRIP_PERCENT = 70.0;    // close to 70 %
+static constexpr double EE_MIN       = 0.0;     // fully open
+static constexpr double EE_MAX       = 0.8;     // fully closed
 
-  void initialize()
-  {
-    auto node_ptr = shared_from_this();
-    move_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(
-      node_ptr, "ur_manipulator");
-    move_group_->setPoseReferenceFrame("base_link");
-    move_group_->setEndEffectorLink("wrist_3_link");
-    move_group_->setMaxVelocityScalingFactor(0.1);
-    move_group_->setMaxAccelerationScalingFactor(0.1);
-    RCLCPP_INFO(get_logger(), "MoveGroupInterface initialized");
-  }
-
-  void run()
-  {
-    // Load pick pose (with defaults if not overridden)
-    geometry_msgs::msg::Pose pick;
-    get_parameter_or("pick_pose.x",  pick.position.x,  0.0);
-    get_parameter_or("pick_pose.y",  pick.position.y,  0.0);
-    get_parameter_or("pick_pose.z",  pick.position.z,  0.8);
-    get_parameter_or("pick_pose.qx", pick.orientation.x, 0.0);
-    get_parameter_or("pick_pose.qy", pick.orientation.y, 0.0);
-    get_parameter_or("pick_pose.qz", pick.orientation.z, 0.0);
-    get_parameter_or("pick_pose.qw", pick.orientation.w, 1.0);
-
-    // Load place pose
-    geometry_msgs::msg::Pose place;
-    get_parameter_or("place_pose.x",  place.position.x,  0.0);
-    get_parameter_or("place_pose.y",  place.position.y,  0.2);
-    get_parameter_or("place_pose.z",  place.position.z,  0.8);
-    get_parameter_or("place_pose.qx", place.orientation.x, 0.0);
-    get_parameter_or("place_pose.qy", place.orientation.y, 0.0);
-    get_parameter_or("place_pose.qz", place.orientation.z, 0.0);
-    get_parameter_or("place_pose.qw", place.orientation.w, 1.0);
-
-    // 1) Move into pick pose
-    RCLCPP_INFO(get_logger(), "Moving to pick pose...");
-    executePose(pick);
-
-    // 2) Lift after pick
-    pick.position.z += 0.10;
-    RCLCPP_INFO(get_logger(), "Lifting after pick...");
-    executePose(pick);
-
-    // 3) Move into place pose
-    RCLCPP_INFO(get_logger(), "Moving to place pose...");
-    executePose(place);
-
-    // 4) Lift after place
-    place.position.z += 0.10;
-    RCLCPP_INFO(get_logger(), "Lifting after place...");
-    executePose(place);
-
-    RCLCPP_INFO(get_logger(), "Pick-and-place sequence complete.");
-  }
-
-private:
-  void executePose(const geometry_msgs::msg::Pose & target)
-  {
-    move_group_->setPoseTarget(target);
-    moveit::planning_interface::MoveGroupInterface::Plan plan;
-    if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
-      move_group_->execute(plan);
-    } else {
-      RCLCPP_ERROR(get_logger(), "Failed to plan to target pose");
-    }
-    rclcpp::sleep_for(std::chrono::milliseconds(500));
-  }
-
-  std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;
-};
-
-int main(int argc, char ** argv)
+int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
-  rclcpp::NodeOptions options;
-  // still allow overrides, but we don't manually declare anything
-  options.automatically_declare_parameters_from_overrides(true);
+  auto node = rclcpp::Node::make_shared("simple_pick_place");
+  auto log  = node->get_logger();
 
-  auto node = std::make_shared<SimplePickPlace>(options);
+  // ─── Executor & spinner ───────────────────────────
+  rclcpp::executors::SingleThreadedExecutor exec;
+  exec.add_node(node);
+  std::thread spin_thread([&exec]{ exec.spin(); });
 
-  // Spinner for MoveIt
-  std::thread spinner([node]() { rclcpp::spin(node); });
+  // ─── MoveIt groups ─────────────────────────────────
+  moveit::planning_interface::MoveGroupInterface arm (node, "ur_manipulator");
+  moveit::planning_interface::MoveGroupInterface grip(node, "robotiq_gripper");
+  arm.setPoseReferenceFrame(  "base_link");
+  arm.setEndEffectorLink(     "wrist_3_link");
+  arm.setPlanningTime(        10.0);
+  arm.setMaxVelocityScalingFactor(    0.3);
+  arm.setMaxAccelerationScalingFactor(0.3);
 
-  node->initialize();
-  node->run();
+  // ─── LinkAttacher clients ─────────────────────────
+  auto attach_cli = node->create_client<linkattacher_msgs::srv::AttachLink>("/ATTACHLINK");
+  auto detach_cli = node->create_client<linkattacher_msgs::srv::DetachLink>("/DETACHLINK");
+  if (!attach_cli->wait_for_service(5s) || !detach_cli->wait_for_service(5s)) {
+    RCLCPP_ERROR(log, "LinkAttacher services unavailable");
+    return 1;
+  }
 
+  // ─── Planner helper ────────────────────────────────
+  auto moveToPose = [&](auto &mg, const geometry_msgs::msg::Pose &target) {
+    mg.setStartStateToCurrentState();
+    mg.setPoseTarget(target);
+    moveit::planning_interface::MoveGroupInterface::Plan plan;
+    if (mg.plan(plan) != moveit::core::MoveItErrorCode::SUCCESS ||
+        mg.execute(plan) != moveit::core::MoveItErrorCode::SUCCESS)
+    {
+      RCLCPP_ERROR(log, "Plan/execute failed");
+      return false;
+    }
+    return true;
+  };
+
+  // ─── Define poses ──────────────────────────────────
+  geometry_msgs::msg::Pose pick, place, pre_pick, pre_place;
+  {
+    tf2::Quaternion q; q.setRPY(-PI,0,-PI/2);
+    pick.orientation  = tf2::toMsg(q);
+    place.orientation = pick.orientation;
+    pick.position.x  = 0.5; pick.position.y  = 0.0; pick.position.z  = 0.12;
+    place.position.x = 0.5; place.position.y = 0.2; place.position.z = 0.12;
+    pre_pick  = pick;  pre_pick.position.z  += OFFSET_Z;
+    pre_place = place; pre_place.position.z += OFFSET_Z;
+  }
+
+  // 1) Pre-pick
+  if (!moveToPose(arm, pre_pick)) return 1;
+
+  // 2) Open gripper
+  grip.setStartStateToCurrentState();
+  grip.setJointValueTarget("robotiq_85_left_knuckle_joint", EE_MIN);
+  grip.move();
+
+  // 3) Descend to pick
+  if (!moveToPose(arm, pick)) return 1;
+
+  // 4) Close gripper to GRIP_PERCENT
+  {
+    double GP  = (EE_MAX - EE_MIN) * (GRIP_PERCENT/100.0);
+    double cmd = EE_MIN + GP;
+    RCLCPP_INFO(log, "Closing gripper to %.1f%% -> %.3f rad", GRIP_PERCENT, cmd);
+    grip.setStartStateToCurrentState();
+    grip.setJointValueTarget("robotiq_85_left_knuckle_joint", cmd);
+    grip.move();
+    rclcpp::sleep_for(300ms);  // let it settle
+  }
+
+  // 5) Attach at finger tip
+  {
+    auto req = std::make_shared<linkattacher_msgs::srv::AttachLink::Request>();
+    req->model1_name = "ur";
+    req->link1_name  = "robotiq_85_left_finger_tip_link";
+    req->model2_name = "box";
+    req->link2_name  = "box";
+    auto res = attach_cli->async_send_request(req).get();
+    if (!res->success) {
+      RCLCPP_ERROR(log, "Attach failed: %s", res->message.c_str());
+      return 1;
+    }
+  }
+
+  // 6) Lift back to pre-pick
+  if (!moveToPose(arm, pre_pick)) return 1;
+
+  // 7) Move to pre-place
+  if (!moveToPose(arm, pre_place)) return 1;
+
+  // 8) Descend to place
+  if (!moveToPose(arm, place)) return 1;
+
+  // 9) Detach
+  {
+    auto req = std::make_shared<linkattacher_msgs::srv::DetachLink::Request>();
+    req->model1_name = "ur";
+    req->link1_name  = "robotiq_85_left_finger_tip_link";
+    req->model2_name = "box";
+    req->link2_name  = "box";
+    auto res = detach_cli->async_send_request(req).get();
+    if (!res->success) {
+      RCLCPP_ERROR(log, "Detach failed: %s", res->message.c_str());
+      return 1;
+    }
+  }
+
+  // 10) **Open gripper after detach**
+  RCLCPP_INFO(log, "Opening gripper after detach");
+  grip.setStartStateToCurrentState();
+  grip.setJointValueTarget("robotiq_85_left_knuckle_joint", EE_MIN);
+  grip.move();
+  rclcpp::sleep_for(300ms);
+
+  // 11) Return to pre-place
+  moveToPose(arm, pre_place);
+
+  RCLCPP_INFO(log, "*** Pick-and-place done ***");
   rclcpp::shutdown();
-  spinner.join();
+  spin_thread.join();
   return 0;
 }
