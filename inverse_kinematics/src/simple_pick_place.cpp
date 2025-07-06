@@ -15,7 +15,7 @@
 
 using namespace std::chrono_literals;
 static constexpr double PI           = 3.141592653589793;
-static constexpr double OFFSET_Z     = 0.05;    // 5 cm lift
+static constexpr double OFFSET_Z     = 0.1;    // 5 cm lift
 static constexpr double GRIP_PERCENT = 70.0;    // close to 70 %
 static constexpr double EE_MIN       = 0.0;     // fully open
 static constexpr double EE_MAX       = 0.8;     // fully closed
@@ -37,8 +37,8 @@ int main(int argc, char** argv)
   arm.setPoseReferenceFrame(  "base_link");
   arm.setEndEffectorLink(     "wrist_3_link");
   arm.setPlanningTime(        10.0);
-  arm.setMaxVelocityScalingFactor(    0.3);
-  arm.setMaxAccelerationScalingFactor(0.3);
+  arm.setMaxVelocityScalingFactor(    3);
+  arm.setMaxAccelerationScalingFactor(3);
 
   // ─── LinkAttacher clients ─────────────────────────
   auto attach_cli = node->create_client<linkattacher_msgs::srv::AttachLink>("/ATTACHLINK");
@@ -69,7 +69,7 @@ int main(int argc, char** argv)
     pick.orientation  = tf2::toMsg(q);
     place.orientation = pick.orientation;
     pick.position.x  = 0.5; pick.position.y  = 0.0; pick.position.z  = 0.12;
-    place.position.x = 0.5; place.position.y = 0.2; place.position.z = 0.12;
+    place.position.x = 0.0; place.position.y = 0.7; place.position.z = 0.12;
     pre_pick  = pick;  pre_pick.position.z  += OFFSET_Z;
     pre_place = place; pre_place.position.z += OFFSET_Z;
   }

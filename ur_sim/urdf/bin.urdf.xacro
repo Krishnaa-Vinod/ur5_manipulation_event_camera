@@ -1,0 +1,155 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!--
+    Macro: bin
+    Params:
+      prefix — prepend to all link/joint names
+      x, y, z, roll, pitch, yaw — pose in world frame
+  -->
+  <xacro:macro name="bin" params="
+      prefix
+      x='0' y='0' z='0'
+      roll='0' pitch='0' yaw='0'">
+    <!-- fixed joint to world, with pose -->
+    <joint name="${prefix}joint_fix" type="fixed">
+      <parent link="world"/>
+      <child  link="${prefix}bottom"/>
+      <origin xyz="${x} ${y} ${z}"
+              rpy="${roll} ${pitch} ${yaw}"/>
+    </joint>
+
+    <!-- bottom plate -->
+    <link name="${prefix}bottom">
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry><box size="0.4 0.4 0.02"/></geometry>
+      </collision>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry><box size="0.4 0.4 0.02"/></geometry>
+      </visual>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass   value="0.05"/>
+        <inertia
+          ixx="0.001" ixy="0.0" ixz="0.0"
+          iyy="0.001" iyz="0.0"
+          izz="0.001"/>
+      </inertial>
+    </link>
+
+    <!-- left wall -->
+    <joint name="${prefix}left_wall" type="fixed">
+      <parent link="${prefix}bottom"/>
+      <child  link="${prefix}left"/>
+    </joint>
+    <link name="${prefix}left">
+      <collision>
+        <origin xyz="-0.2 0 0.05" rpy="0 0 0"/>
+        <geometry><box size="0.02 0.4 0.2"/></geometry>
+      </collision>
+      <visual>
+        <origin xyz="-0.2 0 0.05" rpy="0 0 0"/>
+        <geometry><box size="0.02 0.4 0.2"/></geometry>
+      </visual>
+      <inertial>
+        <origin xyz="-0.2 0 0.05" rpy="0 0 0"/>
+        <mass value="0.05"/>
+        <inertia
+          ixx="0.001" ixy="0.0" ixz="0.0"
+          iyy="0.001" iyz="0.0"
+          izz="0.001"/>
+      </inertial>
+    </link>
+
+    <!-- right wall -->
+    <joint name="${prefix}right_wall" type="fixed">
+      <parent link="${prefix}bottom"/>
+      <child  link="${prefix}right"/>
+    </joint>
+    <link name="${prefix}right">
+      <collision>
+        <origin xyz="0.2 0 0.05" rpy="0 0 0"/>
+        <geometry><box size="0.02 0.4 0.2"/></geometry>
+      </collision>
+      <visual>
+        <origin xyz="0.2 0 0.05" rpy="0 0 0"/>
+        <geometry><box size="0.02 0.4 0.2"/></geometry>
+      </visual>
+      <inertial>
+        <origin xyz="0.2 0 0.05" rpy="0 0 0"/>
+        <mass value="0.05"/>
+        <inertia
+          ixx="0.001" ixy="0.0" ixz="0.0"
+          iyy="0.001" iyz="0.0"
+          izz="0.001"/>
+      </inertial>
+    </link>
+
+    <!-- back wall -->
+    <joint name="${prefix}back_wall" type="fixed">
+      <parent link="${prefix}bottom"/>
+      <child  link="${prefix}back"/>
+    </joint>
+    <link name="${prefix}back">
+      <collision>
+        <origin xyz="0 0.2 0.05" rpy="0 0 0"/>
+        <geometry><box size="0.4 0.02 0.2"/></geometry>
+      </collision>
+      <visual>
+        <origin xyz="0 0.2 0.05" rpy="0 0 0"/>
+        <geometry><box size="0.4 0.02 0.2"/></geometry>
+      </visual>
+      <inertial>
+        <origin xyz="0 0.2 0.05" rpy="0 0 0"/>
+        <mass value="0.05"/>
+        <inertia
+          ixx="0.001" ixy="0.0" ixz="0.0"
+          iyy="0.001" iyz="0.0"
+          izz="0.001"/>
+      </inertial>
+    </link>
+
+    <!-- front wall -->
+    <joint name="${prefix}front_wall" type="fixed">
+      <parent link="${prefix}bottom"/>
+      <child  link="${prefix}front"/>
+    </joint>
+    <link name="${prefix}front">
+      <collision>
+        <origin xyz="0 -0.2 0.05" rpy="0 0 0"/>
+        <geometry><box size="0.4 0.02 0.2"/></geometry>
+      </collision>
+      <visual>
+        <origin xyz="0 -0.2 0.05" rpy="0 0 0"/>
+        <geometry><box size="0.4 0.02 0.2"/></geometry>
+      </visual>
+      <inertial>
+        <origin xyz="0 -0.2 0.05" rpy="0 0 0"/>
+        <mass value="0.05"/>
+        <inertia
+          ixx="0.001" ixy="0.0" ixz="0.0"
+          iyy="0.001" iyz="0.0"
+          izz="0.001"/>
+      </inertial>
+    </link>
+
+    <!-- Gazebo settings -->
+    <gazebo reference="${prefix}bottom">
+      <mu1>10</mu1><mu2>10</mu2><material>Gazebo/White</material>
+    </gazebo>
+    <gazebo reference="${prefix}left">
+      <mu1>10</mu1><mu2>10</mu2><material>Gazebo/White</material>
+    </gazebo>
+    <gazebo reference="${prefix}right">
+      <mu1>10</mu1><mu2>10</mu2><material>Gazebo/White</material>
+    </gazebo>
+    <gazebo reference="${prefix}back">
+      <mu1>10</mu1><mu2>10</mu2><material>Gazebo/White</material>
+    </gazebo>
+    <gazebo reference="${prefix}front">
+      <mu1>10</mu1><mu2>10</mu2><material>Gazebo/White</material>
+    </gazebo>
+  </xacro:macro>
+  <!-- NO automatic instantiation here! -->
+</robot>
