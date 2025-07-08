@@ -73,6 +73,7 @@
     <passive_joint name="robotiq_85_right_finger_tip_joint"/>
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
     <disable_collisions link1="base_camera_link" link2="base_link_inertia" reason="Adjacent"/>
+    <disable_collisions link1="base_camera_link" link2="bottom" reason="Adjacent"/>
     <disable_collisions link1="base_camera_link" link2="conveyor_belt_link" reason="Adjacent"/>
     <disable_collisions link1="base_camera_link" link2="ee_camera_link" reason="Never"/>
     <disable_collisions link1="base_camera_link" link2="forearm_link" reason="Never"/>
@@ -91,13 +92,17 @@
     <disable_collisions link1="base_camera_link" link2="wrist_1_link" reason="Never"/>
     <disable_collisions link1="base_camera_link" link2="wrist_2_link" reason="Never"/>
     <disable_collisions link1="base_camera_link" link2="wrist_3_link" reason="Never"/>
+    <disable_collisions link1="base_link_inertia" link2="bottom" reason="Adjacent"/>
     <disable_collisions link1="base_link_inertia" link2="conveyor_belt_link" reason="Adjacent"/>
     <disable_collisions link1="base_link_inertia" link2="ground_plane" reason="Adjacent"/>
     <disable_collisions link1="base_link_inertia" link2="shoulder_link" reason="Adjacent"/>
-    <disable_collisions link1="conveyor_belt_link" link2="forearm_link" reason="Default"/>
+    <disable_collisions link1="bottom" link2="conveyor_belt_link" reason="Adjacent"/>
+    <disable_collisions link1="bottom" link2="ground_plane" reason="Adjacent"/>
+    <disable_collisions link1="bottom" link2="shoulder_link" reason="Never"/>
+    <disable_collisions link1="bottom" link2="upper_arm_link" reason="Never"/>
+    <disable_collisions link1="conveyor_belt_link" link2="front" reason="Never"/>
     <disable_collisions link1="conveyor_belt_link" link2="ground_plane" reason="Adjacent"/>
     <disable_collisions link1="conveyor_belt_link" link2="shoulder_link" reason="Never"/>
-    <disable_collisions link1="conveyor_belt_link" link2="upper_arm_link" reason="Default"/>
     <disable_collisions link1="ee_camera_link" link2="robotiq_85_base_link" reason="Adjacent"/>
     <disable_collisions link1="ee_camera_link" link2="robotiq_85_left_finger_link" reason="Never"/>
     <disable_collisions link1="ee_camera_link" link2="robotiq_85_left_finger_tip_link" reason="Never"/>
@@ -110,10 +115,13 @@
     <disable_collisions link1="ee_camera_link" link2="wrist_1_link" reason="Never"/>
     <disable_collisions link1="ee_camera_link" link2="wrist_2_link" reason="Never"/>
     <disable_collisions link1="ee_camera_link" link2="wrist_3_link" reason="Adjacent"/>
+    <disable_collisions link1="forearm_link" link2="ground_plane" reason="Never"/>
     <disable_collisions link1="forearm_link" link2="upper_arm_link" reason="Adjacent"/>
     <disable_collisions link1="forearm_link" link2="wrist_1_link" reason="Adjacent"/>
+    <disable_collisions link1="front" link2="ground_plane" reason="Never"/>
     <disable_collisions link1="ground_plane" link2="shoulder_link" reason="Never"/>
     <disable_collisions link1="ground_plane" link2="upper_arm_link" reason="Never"/>
+    <disable_collisions link1="ground_plane" link2="wrist_1_link" reason="Never"/>
     <disable_collisions link1="robotiq_85_base_link" link2="robotiq_85_left_finger_link" reason="Never"/>
     <disable_collisions link1="robotiq_85_base_link" link2="robotiq_85_left_finger_tip_link" reason="Never"/>
     <disable_collisions link1="robotiq_85_base_link" link2="robotiq_85_left_inner_knuckle_link" reason="Adjacent"/>

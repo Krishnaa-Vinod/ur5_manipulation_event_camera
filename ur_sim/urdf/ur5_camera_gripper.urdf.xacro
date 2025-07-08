@@ -17,7 +17,7 @@
   <!-- now instantiate it, overriding the defaults as needed -->
   <xacro:conveyor_belt
    
-    x="0.5" y="0.4" z="0.0"
+    x="0.7" y="0.4" z="0.0"
     roll="0" pitch="0" yaw="0"/>
 
    <xacro:include filename="$(find ur_sim)/urdf/camera.xacro"/>
@@ -153,7 +153,7 @@
      script_sender_port="$(arg script_sender_port)"
      trajectory_port="$(arg trajectory_port)"
      >
-     <origin xyz="0.0 0 0.8" rpy="0 0 0" />          <!-- position robot in the world -->
+     <origin xyz="0.0 0 0.9" rpy="0 0 0" />          <!-- position robot in the world -->
    </xacro:ur_robot>
 
    <xacro:if value="$(arg sim_gazebo)">

@@ -14,14 +14,15 @@ find_package(gazebo_msgs REQUIRED)
 find_package(linkattacher_msgs REQUIRED)
 
 # Add the executable for your C++ node
-add_executable(ur5_pick_place src/ur5_pick_place.cpp)
+add_executable(pick_place_parse src/pick_place_parse.cpp)
 
 # Link the executable against its dependencies
-ament_target_dependencies(ur5_pick_place
+ament_target_dependencies(pick_place_parse
   rclcpp
+  moveit_core
   moveit_ros_planning_interface
-  moveit_msgs
-  gazebo_msgs
+  geometry_msgs
+  linkattacher_msgs
 )
 
 add_executable(move_to_joint_goal src/move_to_joint_goal.cpp)
@@ -29,8 +30,10 @@ add_executable(move_to_joint_goal src/move_to_joint_goal.cpp)
 # Link it against its dependencies
 ament_target_dependencies(move_to_joint_goal
   rclcpp
+  moveit_core
   moveit_ros_planning_interface
-  gazebo_msgs
+  geometry_msgs
+  linkattacher_msgs
 )
 
 add_executable(move_to_location src/move_to_location.cpp)
@@ -63,8 +66,6 @@ ament_target_dependencies(simple_move_with_gripper
 
 # Install the executable
 install(TARGETS
-  simple_pick_place
-  ur5_pick_place
   move_to_joint_goal
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -72,6 +73,7 @@ install(TARGETS
 install(TARGETS move_to_location
   simple_move_with_gripper
   simple_pick_place
+  pick_place_parse
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
