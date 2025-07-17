@@ -33,7 +33,7 @@ def main():
     xml = doc.toxml()
 
     # Positions to spawn (x, y, z)
-    spawn_position = (0.0, -0.5, 0.76)
+    spawn_position = (0.7, 0.0, 0.76)
     spawn_interval = 5.0  # seconds between spawns
 
     count = 0

@@ -13,10 +13,11 @@ find_package(moveit_msgs REQUIRED)
 find_package(gazebo_msgs REQUIRED)
 find_package(linkattacher_msgs REQUIRED)
 
-# Add the executable for your C++ node
-add_executable(pick_place_parse src/pick_place_parse.cpp)
+# (optional) if you use tf2_geometry_msgs directly
+find_package(tf2_geometry_msgs REQUIRED)
 
-# Link the executable against its dependencies
+# Add the executable for your original C++ node
+add_executable(pick_place_parse src/pick_place_parse.cpp)
 ament_target_dependencies(pick_place_parse
   rclcpp
   moveit_core
@@ -25,9 +26,18 @@ ament_target_dependencies(pick_place_parse
   linkattacher_msgs
 )
 
-add_executable(move_to_joint_goal src/move_to_joint_goal.cpp)
+# New HSV‐based pick/place node
+add_executable(pick_place_hsv src/pick_place_hsv.cpp)
+ament_target_dependencies(pick_place_hsv
+  rclcpp
+  moveit_core
+  moveit_ros_planning_interface
+  geometry_msgs
+  tf2_geometry_msgs
+  linkattacher_msgs
+)
 
-# Link it against its dependencies
+add_executable(move_to_joint_goal src/move_to_joint_goal.cpp)
 ament_target_dependencies(move_to_joint_goal
   rclcpp
   moveit_core
@@ -53,8 +63,6 @@ ament_target_dependencies(simple_pick_place
   linkattacher_msgs
 )
 
-find_package(moveit_ros_planning_interface REQUIRED)
-
 add_executable(simple_move_with_gripper src/simple_move_with_gripper.cpp)
 ament_target_dependencies(simple_move_with_gripper
   rclcpp
@@ -63,17 +71,14 @@ ament_target_dependencies(simple_move_with_gripper
   geometry_msgs
 )
 
-
-# Install the executable
+# Install all executables
 install(TARGETS
-  move_to_joint_goal
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-install(TARGETS move_to_location
-  simple_move_with_gripper
-  simple_pick_place
   pick_place_parse
+  pick_place_hsv
+  move_to_joint_goal
+  move_to_location
+  simple_pick_place
+  simple_move_with_gripper
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
