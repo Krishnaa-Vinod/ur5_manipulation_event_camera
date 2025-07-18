@@ -30,7 +30,7 @@
   <!-- gripper‐mounted view -->
   <xacro:camera
     prefix="ee_"
-    parent="tool0"           
+    parent="wrist_3_link"           
     xyz="0 -0.05 0.0"           
     rpy="1.57 -1.57 0"/>
    <xacro:include filename="$(find ur_sim)/urdf/ur5_macro.xacro"/>
