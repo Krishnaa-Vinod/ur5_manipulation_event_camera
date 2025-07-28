@@ -48,6 +48,29 @@ ament_target_dependencies(pick_place_yolo
   linkattacher_msgs
 )
 
+add_executable(track_pick_place src/track_pick_place_yolo.cpp)
+ament_target_dependencies(track_pick_place
+  rclcpp
+  moveit_core
+  moveit_ros_planning_interface
+  geometry_msgs
+  tf2_geometry_msgs
+  linkattacher_msgs
+)
+
+add_executable( REViTArmIKNode src/REViTArm_IK.cpp)
+ament_target_dependencies(REViTArmIKNode
+  rclcpp
+  moveit_core
+  moveit_ros_planning_interface
+  geometry_msgs
+  tf2_geometry_msgs
+  linkattacher_msgs
+  tf2_ros
+  message_filters
+  std_msgs
+)
+
 add_executable(move_to_joint_goal src/move_to_joint_goal.cpp)
 ament_target_dependencies(move_to_joint_goal
   rclcpp
@@ -87,10 +110,12 @@ install(TARGETS
   pick_place_parse
   pick_place_hsv
   pick_place_yolo
+  track_pick_place
   move_to_joint_goal
   move_to_location
   simple_pick_place
   simple_move_with_gripper
+  REViTArmIKNode
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 

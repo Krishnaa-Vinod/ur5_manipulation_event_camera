@@ -58,7 +58,7 @@
           <image>
             <format>R8G8B8</format>
             <width>640</width>
-            <height>480</height>
+            <height>640</height>
           </image>
           <clip>
             <near>0.05</near>

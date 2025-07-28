@@ -7,7 +7,7 @@ from moveit_configs_utils import MoveItConfigsBuilder
 
 def generate_launch_description():
 
-    # Simulation time for all relevant nodes
+    # Simulation time parameter
     use_sim_time_param = {"use_sim_time": True}
 
     # Build the MoveIt configuration
@@ -22,26 +22,28 @@ def generate_launch_description():
             publish_robot_description_semantic=True,
             publish_planning_scene=True
         )
-        .planning_pipelines(pipelines=["ompl", "chomp", "pilz_industrial_motion_planner"])
+        .planning_pipelines(
+            pipelines=["ompl", "chomp", "pilz_industrial_motion_planner"]
+        )
         .to_moveit_configs()
     )
 
-    # Combine MoveIt params + sim time
+    # Combine MoveIt params with simulation-time
     move_group_params = moveit_config.to_dict()
     move_group_params.update(use_sim_time_param)
 
-    # --- Nodes ---
+    # Nodes
 
-    # 1) MoveGroup (with sim time)
-    move_group_node = Node(
-        package="moveit_ros_move_group",
-        executable="move_group",
-        output="screen",
-        parameters=[move_group_params],
-        arguments=["--ros-args", "--log-level", "info"],
+    # Gazebo world (conveyor belt)
+    gazebo_launch = IncludeLaunchDescription(
+        os.path.join(
+            get_package_share_directory("conveyorbelt_gazebo"),
+            "launch",
+            "conveyorbelt.launch.py",
+        )
     )
 
-    # 2) RViz (with sim time)
+    # RViz
     rviz_config_file = os.path.join(
         get_package_share_directory("ur5_camera_gripper_moveit_config"),
         "config",
@@ -62,7 +64,7 @@ def generate_launch_description():
         ],
     )
 
-    # 3) Robot State Publisher (with sim time)
+    # Robot State Publisher
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
@@ -70,16 +72,25 @@ def generate_launch_description():
         parameters=[moveit_config.robot_description, use_sim_time_param],
     )
 
-    # 4) Gazebo Spawner (needs sim time to read /clock)
+    # Move Group
+    move_group_node = Node(
+        package="moveit_ros_move_group",
+        executable="move_group",
+        output="screen",
+        parameters=[move_group_params],
+        arguments=["--ros-args", "--log-level", "info"],
+    )
+
+    # Spawn UR entity in Gazebo
     spawn_entity_node = Node(
         package="gazebo_ros",
         executable="spawn_entity.py",
-        arguments=["-topic", "robot_description", "-entity", "ur"],
         output="screen",
+        arguments=["-topic", "robot_description", "-entity", "ur"],
         parameters=[use_sim_time_param],
     )
 
-    # 5) Controller Spawners (joint_state_broadcaster publishes /joint_states)
+    # Controller Spawners
     controller_spawners = [
         "joint_state_broadcaster",
         "joint_trajectory_controller",
@@ -89,19 +100,20 @@ def generate_launch_description():
         Node(
             package="controller_manager",
             executable="spawner",
+            output="screen",
             arguments=[controller],
             parameters=[use_sim_time_param],
         )
         for controller in controller_spawners
     ]
 
-    # 6) Underlying Gazebo world (conveyor belt)
-    gazebo_launch = IncludeLaunchDescription(
-        os.path.join(
-            get_package_share_directory("conveyorbelt_gazebo"),
-            "launch",
-            "conveyorbelt.launch.py",
-        )
+    # Real-time tracking node
+    track_node = Node(
+        package="inverse_kinematics",
+        executable="track_pick_place",
+        name="track_pick_place",
+        output="screen",
+        parameters=[use_sim_time_param],
     )
 
     return LaunchDescription([
@@ -111,4 +123,5 @@ def generate_launch_description():
         move_group_node,
         spawn_entity_node,
         *spawner_nodes,
+        track_node,
     ])
