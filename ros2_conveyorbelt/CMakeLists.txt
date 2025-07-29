@@ -80,6 +80,7 @@ install(
 install(PROGRAMS
   python/SpawnObject.py
   python/SpawnLoop.py
+  python/SpawnRandom.py
   DESTINATION lib/${PROJECT_NAME} 
 )
 
