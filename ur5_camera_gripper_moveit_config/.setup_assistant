@@ -7,4 +7,19 @@ moveit_setup_assistant_config:
   package_settings:
     author_name: Krishna Vinod
     author_email: kvinod@asu.edu
-    generated_timestamp: 1751831878
+    generated_timestamp: 1756356170
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity

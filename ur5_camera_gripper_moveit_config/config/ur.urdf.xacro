@@ -6,9 +6,9 @@
     <xacro:include filename="$(find ur_sim)/urdf/ur5_camera_gripper.urdf.xacro" />
 
     <!-- Import control_xacro -->
-    <!-- <xacro:include filename="ur.ros2_control.xacro" />
+    <!-- <xacro:include filename="ur.ros2_control.xacro" /> -->
 
 
-    <xacro:ur_ros2_control name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/> -->
+    <!-- <xacro:ur_ros2_control name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/> -->
 
 </robot>

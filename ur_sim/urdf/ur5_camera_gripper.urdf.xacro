@@ -12,19 +12,27 @@
     roll="0" pitch="0" yaw="0"/>
 
 
-  <xacro:include filename="$(find ur_sim)/urdf/belt.urdf.xacro"/>
+  <!-- <xacro:include filename="$(find ur_sim)/urdf/belt.urdf.xacro"/>
 
-  <!-- now instantiate it, overriding the defaults as needed -->
   <xacro:conveyor_belt
    
     x="0.7" y="0.4" z="0.0"
-    roll="0" pitch="0" yaw="0"/>
+    roll="0" pitch="0" yaw="0"/> -->
+
+
+  <xacro:include filename="$(find ur_sim)/urdf/table.urdf.xacro"/>
+  <xacro:table 
+    name="worktable" 
+    parent="world"
+    x="0.7" y="0.2" z="0.73" 
+    roll="0" pitch="0" yaw="1.57"
+    top_x="1.0" top_y="0.5" top_thickness="0.04" height="0.75"/>
 
    <xacro:include filename="$(find ur_sim)/urdf/camera.xacro"/>
     <xacro:camera
     prefix="base_"
-    parent="base_link"
-    xyz="0.5 0.4 2.0"
+    parent="world"
+    xyz="0.7 0.0 2.5"
     rpy="0 1.57 0"/>
 
   <!-- gripper‐mounted view -->
@@ -33,6 +41,8 @@
     parent="wrist_3_link"           
     xyz="0 -0.05 0.0"           
     rpy="1.57 -1.57 0"/>
+
+    
    <xacro:include filename="$(find ur_sim)/urdf/ur5_macro.xacro"/>
 
    <!-- possible 'ur_type' values: ur3, ur3e, ur5, ur5e, ur7e, ur10, ur10e, ur12e, ur16e, ur15, ur20, ur30 -->
@@ -153,7 +163,7 @@
      script_sender_port="$(arg script_sender_port)"
      trajectory_port="$(arg trajectory_port)"
      >
-     <origin xyz="0.0 0 0.9" rpy="0 0 0" />          <!-- position robot in the world -->
+     <origin xyz="0.0 0.0 0.9" rpy="0 0 0" />          <!-- position robot in the world -->
    </xacro:ur_robot>
 
    <xacro:if value="$(arg sim_gazebo)">

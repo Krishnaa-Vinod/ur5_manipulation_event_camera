@@ -1,0 +1,32 @@
+<?xml version="1.0" ?>
+
+<sdf version="1.4">
+
+  <world name="default">
+
+    <!-- WORLD COMPONENTS: STANDARD -->
+
+    <gravity>0 0 -9.8</gravity>
+
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <scene>
+      <shadows>0</shadows>
+    </scene>
+
+    
+    <plugin name="gazebo_link_attacher" filename="libgazebo_link_attacher.so"/> 
+    <plugin name="gazebo_ros_init" filename="libgazebo_ros_init.so">
+    <ros>
+    </ros>
+    </plugin>
+
+  </world>
+
+</sdf>

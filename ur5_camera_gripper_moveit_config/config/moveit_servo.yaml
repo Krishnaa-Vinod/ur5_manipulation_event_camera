@@ -1,0 +1,38 @@
+moveit_servo:
+  # Core timing
+  update_rate: 250
+  incoming_command_timeout: 0.2
+  num_outgoing_halt_msgs_to_publish: 4
+
+  # Input command format - FIXED: changed to unitless for TwistStamped
+  command_in_type: "unitless"             # (must be "unitless" or "speed_units")
+
+  # Frames / planning group - FIXED: Added missing parameters
+  command_in_frame: "base_link"           
+  planning_frame:  "base_link"
+  robot_link_command_frame: "base_link"   # Explicitly set the command frame
+  move_group_name: "ur_manipulator"       
+  ee_frame_name: "tool0"                  # Explicitly set end effector
+
+  # Scale parameters - ADDED: These were missing and caused issues
+  scale:
+    linear: 1.0
+    rotational: 1.0
+    joint: 1.0
+
+  # Output mapping to ros2_control controller
+  command_out_type: "trajectory_msgs/JointTrajectory"
+  publish_joint_trajectory: true
+  command_out_topic: "/joint_trajectory_controller/joint_trajectory"
+
+  # Safety (relaxed initially so you can see motion; tune back later)
+  collision_check: false                   
+  lower_singularity_threshold: 0.5
+  hard_stop_singularity_threshold: 100.0
+
+  # Additional servo control parameters
+  joint_limit_margin: 0.1
+  publish_status: true
+  
+  # Servo starts in paused state - will be activated by micro-saccade node
+  start_servo: false

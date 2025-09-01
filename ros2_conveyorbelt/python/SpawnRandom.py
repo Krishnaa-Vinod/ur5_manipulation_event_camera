@@ -44,7 +44,7 @@ class ConveyorSpawner(Node):
 
         # --- spawn limits & bookkeeping -------------------------------------
         self.x_min, self.x_max = 0.55, 0.85
-        self.y_min, self.y_max = -0.15, 0.13
+        self.y_min, self.y_max = -0.18, -0.15
         self.z_const           = 0.76
         self.count             = 0
 
@@ -100,7 +100,7 @@ def main():
     try:
         while rclpy.ok():
             node.loop()
-            time.sleep(7.0)               # 9-second interval
+            time.sleep(10.0)               # 9-second interval
     except KeyboardInterrupt:
         pass
     finally:

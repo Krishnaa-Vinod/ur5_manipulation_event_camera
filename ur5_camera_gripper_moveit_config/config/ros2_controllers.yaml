@@ -24,9 +24,10 @@ joint_trajectory_controller:
       - wrist_2_joint
       - wrist_3_joint
     command_interfaces:
-      []
+      - position
     state_interfaces:
-      []
+      - position
+      - velocity
 gripper_position_controller:
   ros__parameters:
     joint: robotiq_85_left_knuckle_joint

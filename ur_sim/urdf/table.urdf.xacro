@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<robot name="env_objects" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:macro name="table" params="
+      name:=table
+      parent:=world
+      x:=0.0 y:=0.0 z:=0.73
+      roll:=0.0 pitch:=0.0 yaw:=0.0
+      top_x:=1.20 top_y:=0.60 top_thickness:=0.04
+      height:=0.75 leg_thickness:=0.05
+      mass:=15.0
+      mu1:=1.0 mu2:=1.0
+      rgba:='1 1 1 1'
+      visual_legs:=true
+      collision_legs:=false">
+
+    <!-- helpers -->
+    <xacro:property name="lx" value="${float(top_x)}"/>
+    <xacro:property name="ly" value="${float(top_y)}"/>
+    <xacro:property name="lz" value="${float(top_thickness)}"/>
+    <xacro:property name="lt" value="${float(leg_thickness)}"/>
+    <xacro:property name="leg_h" value="${float(height) - float(top_thickness)}"/>
+
+    <!-- inertia -->
+    <xacro:property name="ixx" value="${float(mass)/12.0 * (ly*ly + lz*lz)}"/>
+    <xacro:property name="iyy" value="${float(mass)/12.0 * (lx*lx + lz*lz)}"/>
+    <xacro:property name="izz" value="${float(mass)/12.0 * (lx*lx + ly*ly)}"/>
+
+    <!-- tabletop -->
+    <link name="${name}_top">
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="${mass}"/>
+        <inertia ixx="${ixx}" ixy="0" ixz="0" iyy="${iyy}" iyz="0" izz="${izz}"/>
+      </inertial>
+
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry><box size="${lx} ${ly} ${lz}"/></geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry><box size="${lx} ${ly} ${lz}"/></geometry>
+        <material name="${name}_color">
+          <color rgba="${rgba}"/>
+        </material>
+      </visual>
+
+      <!-- legs (visuals by default) -->
+      <xacro:property name="cx" value="${lx/2.0 - lt/2.0}"/>
+      <xacro:property name="cy" value="${ly/2.0 - lt/2.0}"/>
+      <xacro:property name="cz" value="${- (leg_h/2.0 + lz/2.0)}"/>
+
+      <xacro:if value="${visual_legs}">
+        <visual><origin xyz="${ cx} ${ cy} ${cz}" rpy="0 0 0"/><geometry><box size="${lt} ${lt} ${leg_h}"/></geometry><material name="${name}_color"/></visual>
+        <visual><origin xyz="${-cx} ${ cy} ${cz}" rpy="0 0 0"/><geometry><box size="${lt} ${lt} ${leg_h}"/></geometry><material name="${name}_color"/></visual>
+        <visual><origin xyz="${ cx} ${-cy} ${cz}" rpy="0 0 0"/><geometry><box size="${lt} ${lt} ${leg_h}"/></geometry><material name="${name}_color"/></visual>
+        <visual><origin xyz="${-cx} ${-cy} ${cz}" rpy="0 0 0"/><geometry><box size="${lt} ${lt} ${leg_h}"/></geometry><material name="${name}_color"/></visual>
+      </xacro:if>
+
+      <xacro:if value="${collision_legs}">
+        <collision><origin xyz="${ cx} ${ cy} ${cz}" rpy="0 0 0"/><geometry><box size="${lt} ${lt} ${leg_h}"/></geometry></collision>
+        <collision><origin xyz="${-cx} ${ cy} ${cz}" rpy="0 0 0"/><geometry><box size="${lt} ${lt} ${leg_h}"/></geometry></collision>
+        <collision><origin xyz="${ cx} ${-cy} ${cz}" rpy="0 0 0"/><geometry><box size="${lt} ${lt} ${leg_h}"/></geometry></collision>
+        <collision><origin xyz="${-cx} ${-cy} ${cz}" rpy="0 0 0"/><geometry><box size="${lt} ${lt} ${leg_h}"/></geometry></collision>
+      </xacro:if>
+    </link>
+
+    <!-- fixed joint -->
+    <joint name="${name}_fixed" type="fixed">
+      <parent link="${parent}"/>
+      <child  link="${name}_top"/>
+      <origin xyz="${x} ${y} ${z}" rpy="${roll} ${pitch} ${yaw}"/>
+    </joint>
+
+    <!-- Gazebo (keep same structure as your working file) -->
+    <gazebo reference="${name}_top">
+      <material>Gazebo/White</material>
+      <mu1>${mu1}</mu1>
+      <mu2>${mu2}</mu2>
+      <kp>1e7</kp>
+      <kd>1.0</kd>
+    </gazebo>
+
+  </xacro:macro>
+
+  <xacro:arg name="standalone" default="false"/>
+  <xacro:if value="$(arg standalone)">
+    <xacro:table name="table_a" parent="world"
+                 x="0.8" y="0.0" z="0.73" roll="0" pitch="0" yaw="0"
+                 top_x="1.2" top_y="0.6" top_thickness="0.04" height="0.75" leg_thickness="0.05"/>
+  </xacro:if>
+
+</robot>
