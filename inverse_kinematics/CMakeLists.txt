@@ -20,6 +20,7 @@ find_package(moveit_ros_planning_interface REQUIRED)
 find_package(moveit_msgs REQUIRED)
 find_package(gazebo_msgs REQUIRED)
 find_package(linkattacher_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 # ── Executables ──────────────────────────────────────────────────────
 # original parse node
@@ -104,6 +105,7 @@ ament_target_dependencies(micro_saccade_servo_cpp
   rclcpp
   geometry_msgs
   std_srvs 
+  sensor_msgs
 )
 
 target_link_libraries(micro_saccade_servo_cpp Threads::Threads)

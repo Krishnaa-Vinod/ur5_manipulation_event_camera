@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
-<robot name="orange_box">
+<robot name="box_blue">
 
-  <link name="orange_box">
+  <link name="box_blue">
     <collision>
-      <origin xyz= "0.0 0.0 0.0" rpy="0 0 0"/>
+      <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
       <geometry>
-        <box size= "0.03 0.03 0.03" />
+        <box size="0.03 0.03 0.03" />
       </geometry>
       <surface>
         <contact>
@@ -15,15 +15,15 @@
     </collision>
 
     <visual>
-      <origin xyz= "0.0 0.0 0.0" rpy="0 0 0"/>
+      <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
       <geometry>
-        <box size= "0.03 0.03 0.03" />
+        <box size="0.03 0.03 0.03" />
       </geometry>
     </visual>
 
     <inertial>
-      <origin xyz= "0.0 0.0 0.0" rpy="0 0 0"/>
-      <mass value= "0.1" />
+      <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
+      <mass value="0.1" />
       <inertia
         ixx="0.000015" ixy="0.0"  ixz="0.0"
         iyy="0.000015" iyz="0.0"
@@ -31,8 +31,8 @@
     </inertial>
   </link>
 
-  <gazebo reference="orange_box">
-    <material>Gazebo/Orange</material>
+  <gazebo reference="box_blue">
+    <material>Gazebo/Blue</material>
     <mu1>100.0</mu1> 
     <mu2>100.0</mu2>
     <selfCollide>false</selfCollide> 

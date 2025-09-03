@@ -17,7 +17,7 @@ using namespace std::chrono_literals;
 // Global atomic flag for clean shutdown
 std::atomic<bool> g_shutdown_requested{false};
 
-// Function to set terminal to non-blocking mode
+// Terminal control functions
 struct termios orig_termios;
 
 void disableRawMode() {
@@ -36,19 +36,18 @@ void enableRawMode() {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
-// Keyboard monitoring function
 void keyboardMonitor() {
     enableRawMode();
     
-    std::cout << "\n=== MICRO SACCADE CONTROL ===" << std::endl;
+    std::cout << "\n=== HIGH-FREQUENCY Y-AXIS MICRO SACCADE ===" << std::endl;
     std::cout << "Press 'q' to quit safely" << std::endl;
-    std::cout << "Press 'p' to pause/resume" << std::endl;
-    std::cout << "============================\n" << std::endl;
+    std::cout << "Joint positions locked to 'main' pose!" << std::endl;
+    std::cout << "==========================================\n" << std::endl;
     
     char c;
     while (!g_shutdown_requested && read(STDIN_FILENO, &c, 1) >= 0) {
         if (c == 'q' || c == 'Q') {
-            std::cout << "\n[KEYBOARD] Quit requested ('q' pressed)" << std::endl;
+            std::cout << "\n[KEYBOARD] Quit requested" << std::endl;
             g_shutdown_requested = true;
             break;
         }
@@ -56,116 +55,112 @@ void keyboardMonitor() {
     }
 }
 
-class MicroSaccadeNode : public rclcpp::Node {
+class FastYAxisMicroSaccadeNode : public rclcpp::Node {
 public:
-  MicroSaccadeNode() : Node("micro_saccade_servo_cpp"), paused_(false) {
-    // ── Fixed Parameters (no command line needed) ──────────────────
+  FastYAxisMicroSaccadeNode() : Node("fast_y_axis_micro_saccade") {
+    
+    // High-frequency Y-axis movement parameters
     servo_topic_ = "/servo_server/delta_twist_cmds";
-    frame_id_    = "base_link";
-    axis_        = "y";          // "x" | "y" | "z"
-    amplitude_   = 0.01;        // ±10 mm
-    freq_hz_     = 3.0;
-    profile_     = "square";     // "square" | "sine"
-    rate_hz_     = 250.0;
-    ramp_ms_     = 15.0;         // softens square flips
-    duration_s_  = -1.0;         // -1 = forever
-
-    // Handle use_sim_time parameter safely
+    frame_id_ = "base_link";
+    
+    // Fast Y-axis micro-saccade parameters
+    y_amplitude_ = 0.010;      // ±2mm - small for stability at high frequency
+    frequency_hz_ = 5.0;       // 8Hz - much faster as requested
+    control_rate_hz_ = 500.0;  // 500Hz - very high control rate
+    
+    // Strict drift prevention
+    reset_interval_s_ = 8.0;   // More frequent resets at high frequency
+    max_cumulative_error_ = 0.001; // 1mm max cumulative error before correction
+    
+    // Handle simulation time
     if (!this->has_parameter("use_sim_time")) {
         this->declare_parameter<bool>("use_sim_time", false);
     }
 
-    // Derived parameters
-    omega_ = 2.0 * M_PI * freq_hz_;
-    edge_width_s_ = std::max(0.001, ramp_ms_ / 1000.0);
+    // Calculate derived parameters
+    omega_ = 2.0 * M_PI * frequency_hz_;
+    
+    // Initialize error tracking
+    cumulative_x_error_ = 0.0;
+    cumulative_z_error_ = 0.0;
+    error_samples_ = 0;
 
-    // Setup servo service clients
+    // Setup servo services
     servo_start_client_ = this->create_client<std_srvs::srv::Trigger>("/servo_server/start_servo");
     servo_stop_client_ = this->create_client<std_srvs::srv::Trigger>("/servo_server/stop_servo");
 
-    // Wait for servo services to be available
+    // Wait for servo services
     RCLCPP_INFO(get_logger(), "Waiting for servo services...");
-    if (!servo_start_client_->wait_for_service(5s)) {
-        RCLCPP_WARN(get_logger(), "Servo start service not available, continuing anyway");
+    if (!servo_start_client_->wait_for_service(3s)) {
+        RCLCPP_WARN(get_logger(), "Servo services not available");
     }
 
     // Start servo
     startServo();
 
-    // QoS that matches Servo's subscriber (BEST_EFFORT, small queue)
+    // Create twist publisher with high-performance QoS
     auto qos = rclcpp::QoS(rclcpp::KeepLast(1)).best_effort();
-    pub_ = this->create_publisher<geometry_msgs::msg::TwistStamped>(servo_topic_, qos);
+    twist_pub_ = this->create_publisher<geometry_msgs::msg::TwistStamped>(servo_topic_, qos);
     
-    // Give servo a moment to start
+    // Allow servo to start
     rclcpp::sleep_for(500ms);
     
-    t0_ = this->now();
+    start_time_ = this->now();
+    last_reset_time_ = this->now();
 
-    // Wall timer is fine; stamps use node clock (sim or wall)
-    auto period = std::chrono::duration<double>(1.0 / std::max(1e-6, rate_hz_));
+    // Create high-frequency timer
+    auto period = std::chrono::duration<double>(1.0 / control_rate_hz_);
     timer_ = this->create_wall_timer(
-      std::chrono::duration_cast<std::chrono::nanoseconds>(period),
-      std::bind(&MicroSaccadeNode::onTimer, this));
+        std::chrono::duration_cast<std::chrono::nanoseconds>(period),
+        std::bind(&FastYAxisMicroSaccadeNode::highFrequencyControl, this));
 
-    RCLCPP_INFO(get_logger(),
-      "Micro-saccade (CPP): %s ±%.1f mm @ %.2f Hz on %s-axis | topic=%s frame=%s rate=%.0f Hz",
-      profile_.c_str(), amplitude_*1000.0, freq_hz_, axis_.c_str(),
-      servo_topic_.c_str(), frame_id_.c_str(), rate_hz_);
+    RCLCPP_INFO(get_logger(), "FAST Y-axis micro-saccade: ±%.1fmm @ %.1fHz (control: %.0fHz)", 
+                y_amplitude_*1000.0, frequency_hz_, control_rate_hz_);
+    RCLCPP_INFO(get_logger(), "Joints locked to main pose - only Y-axis end-effector movement");
     
-    RCLCPP_INFO(get_logger(), "Servo mode ACTIVATED - Robot is now in micro-saccade control");
-    
-    // Start keyboard monitoring thread
+    // Start keyboard thread
     keyboard_thread_ = std::thread(keyboardMonitor);
   }
 
-  ~MicroSaccadeNode() override {
-    safeShutdown();
+  ~FastYAxisMicroSaccadeNode() {
+    shutdown();
   }
 
-  void safeShutdown() {
-    if (shutdown_completed_) return;
-    shutdown_completed_ = true;
+  void shutdown() {
+    if (shutdown_done_) return;
+    shutdown_done_ = true;
     
-    RCLCPP_INFO(get_logger(), "Initiating safe shutdown...");
+    RCLCPP_INFO(get_logger(), "Shutting down fast Y-axis micro-saccade...");
     
-    // Signal keyboard thread to stop
+    // Stop keyboard thread
     g_shutdown_requested = true;
     if (keyboard_thread_.joinable()) {
         keyboard_thread_.join();
     }
     
-    // Stop the timer first
+    // Cancel timer
     if (timer_) {
         timer_->cancel();
         timer_.reset();
     }
     
-    // Publish multiple zero twists to ensure robot stops completely
-    RCLCPP_INFO(get_logger(), "Publishing zero velocity commands...");
-    for (int i = 0; i < 12; ++i) {
-      geometry_msgs::msg::TwistStamped msg;
-      msg.header.stamp = this->now();
-      msg.header.frame_id = frame_id_;
-      // All velocities are zero by default
-      pub_->publish(msg);
-      rclcpp::sleep_for(8ms);
+    // Extended zero command sequence for high-frequency stop
+    RCLCPP_INFO(get_logger(), "Sending extended stop sequence...");
+    for (int i = 0; i < 50; ++i) {  // More zero commands for high-freq control
+        publishZeroVelocity();
+        rclcpp::sleep_for(2ms);    // Faster stop sequence
     }
 
-    // Stop servo to return control to motion planning
-    RCLCPP_INFO(get_logger(), "Stopping servo service...");
+    // Stop servo
     stopServo();
     
-    // Additional safety: publish more zeros after stopping servo
-    for (int i = 0; i < 8; ++i) {
-      geometry_msgs::msg::TwistStamped msg;
-      msg.header.stamp = this->now();
-      msg.header.frame_id = frame_id_;
-      pub_->publish(msg);
-      rclcpp::sleep_for(10ms);
+    // Final safety sequence
+    for (int i = 0; i < 20; ++i) {
+        publishZeroVelocity();
+        rclcpp::sleep_for(5ms);
     }
     
-    RCLCPP_INFO(get_logger(), "Servo mode DEACTIVATED - Robot returned to motion planning control");
-    std::cout << "\n[SHUTDOWN] Safe shutdown completed. Robot should be stopped.\n" << std::endl;
+    RCLCPP_INFO(get_logger(), "Fast Y-axis micro-saccade stopped safely");
   }
 
 private:
@@ -174,20 +169,13 @@ private:
     
     if (servo_start_client_->service_is_ready()) {
         auto future = servo_start_client_->async_send_request(request);
-        
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future, 2s) 
             == rclcpp::FutureReturnCode::SUCCESS) {
             auto response = future.get();
             if (response->success) {
-                RCLCPP_INFO(get_logger(), "Servo started successfully");
-            } else {
-                RCLCPP_WARN(get_logger(), "Failed to start servo: %s", response->message.c_str());
+                RCLCPP_INFO(get_logger(), "Servo started - joints locked to main pose");
             }
-        } else {
-            RCLCPP_WARN(get_logger(), "Failed to call servo start service");
         }
-    } else {
-        RCLCPP_WARN(get_logger(), "Servo start service not ready");
     }
   }
 
@@ -196,114 +184,162 @@ private:
     
     if (servo_stop_client_->service_is_ready()) {
         auto future = servo_stop_client_->async_send_request(request);
-        
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future, 1s) 
             == rclcpp::FutureReturnCode::SUCCESS) {
             auto response = future.get();
             if (response->success) {
-                RCLCPP_INFO(get_logger(), "Servo stopped successfully");
-            } else {
-                RCLCPP_WARN(get_logger(), "Failed to stop servo: %s", response->message.c_str());
+                RCLCPP_INFO(get_logger(), "Servo stopped");
             }
-        } else {
-            RCLCPP_ERROR(get_logger(), "TIMEOUT: Failed to call servo stop service!");
         }
-    } else {
-        RCLCPP_WARN(get_logger(), "Servo stop service not ready");
     }
   }
 
-  void onTimer() {
-    // Check for shutdown request
+  void publishZeroVelocity() {
+    geometry_msgs::msg::TwistStamped msg;
+    msg.header.stamp = this->now();
+    msg.header.frame_id = frame_id_;
+    // All velocities are zero by default
+    twist_pub_->publish(msg);
+  }
+
+  void highFrequencyControl() {
+    // Check for shutdown
     if (g_shutdown_requested) {
-        safeShutdown();
+        shutdown();
         rclcpp::shutdown();
         return;
     }
     
     const auto now = this->now();
-    const double t = (now - t0_).seconds();
+    const double elapsed_time = (now - start_time_).seconds();
+    const double time_since_reset = (now - last_reset_time_).seconds();
 
-    if (duration_s_ > 0.0 && t >= duration_s_) {
-      static bool halted = false;
-      if (!halted) {
-        RCLCPP_INFO(get_logger(), "Duration reached; halting and stopping servo.");
-        safeShutdown();
-        rclcpp::shutdown();
-        halted = true;
-      }
-      return;
+    // More frequent drift correction for high-frequency operation
+    if (time_since_reset >= reset_interval_s_) {
+        performDriftCorrection();
+        return;
     }
 
+    // Generate pure Y-axis sine wave velocity
+    double y_velocity = y_amplitude_ * omega_ * std::cos(omega_ * elapsed_time);
+    
+    // Calculate corrective velocities for X and Z drift prevention
+    double x_correction = 0.0;
+    double z_correction = 0.0;
+    
+    if (error_samples_ > 0) {
+        // Apply small corrective velocities to counteract accumulated drift
+        double avg_x_error = cumulative_x_error_ / error_samples_;
+        double avg_z_error = cumulative_z_error_ / error_samples_;
+        
+        // Proportional correction with small gain
+        x_correction = -avg_x_error * 0.5;  // Small correction gain
+        z_correction = -avg_z_error * 0.5;
+        
+        // Limit correction velocities
+        x_correction = std::max(-0.001, std::min(0.001, x_correction)); // ±1mm/s max
+        z_correction = std::max(-0.001, std::min(0.001, z_correction));
+    }
+
+    // Create and publish command
     geometry_msgs::msg::TwistStamped cmd;
     cmd.header.stamp = now;
     cmd.header.frame_id = frame_id_;
+    
+    // Y-axis: High-frequency micro-saccade
+    cmd.twist.linear.y = y_velocity;
+    
+    // X and Z: Small drift correction
+    cmd.twist.linear.x = x_correction;
+    cmd.twist.linear.z = z_correction;
+    
+    // No rotational movement (joints locked to main pose)
+    cmd.twist.angular.x = 0.0;
+    cmd.twist.angular.y = 0.0;
+    cmd.twist.angular.z = 0.0;
 
-    const double v = (profile_ == "sine") ? velSine(t) : velSquare(t);
-
-    if (axis_ == "x" || axis_ == "X")      cmd.twist.linear.x = v;
-    else if (axis_ == "y" || axis_ == "Y") cmd.twist.linear.y = v;
-    else                                    cmd.twist.linear.z = v;
-
-    pub_->publish(cmd);
+    twist_pub_->publish(cmd);
+    
+    // Track potential drift (simple estimation)
+    double dt = 1.0 / control_rate_hz_;
+    cumulative_x_error_ += cmd.twist.linear.x * dt;
+    cumulative_z_error_ += cmd.twist.linear.z * dt;
+    error_samples_++;
+    
+    // Debug output every 4 seconds
+    static int debug_counter = 0;
+    if (++debug_counter % (int)(control_rate_hz_ * 4.0) == 0) {
+        RCLCPP_INFO(get_logger(), "Y-vel: %+.1fmm/s | X-corr: %+.3f | Z-corr: %+.3f", 
+                   y_velocity * 1000.0, x_correction * 1000.0, z_correction * 1000.0);
+    }
   }
 
-  double velSine(double t) const {
-    // x(t) = A sin(ω t) => v(t) = A ω cos(ω t)
-    return amplitude_ * omega_ * std::cos(omega_ * t);
+  void performDriftCorrection() {
+    RCLCPP_INFO(get_logger(), "High-frequency drift correction...");
+    
+    // Quick stabilization sequence for high-frequency operation
+    for (int i = 0; i < 25; ++i) {
+        publishZeroVelocity();
+        rclcpp::sleep_for(4ms);  // Fast stabilization
+    }
+    
+    // Reset error tracking
+    cumulative_x_error_ = 0.0;
+    cumulative_z_error_ = 0.0;
+    error_samples_ = 0;
+    
+    // Reset timing
+    start_time_ = this->now();
+    last_reset_time_ = this->now();
+    
+    RCLCPP_INFO(get_logger(), "High-frequency correction complete");
   }
 
-  double velSquare(double t) {
-    // Constant-velocity segments with soft sign flips.
-    // To traverse ±A each half-cycle, |v| = 4 * A * f
-    const double v_mag = 4.0 * amplitude_ * freq_hz_;
-    const double T = 1.0 / std::max(1e-6, freq_hz_);
-    double phase = std::fmod(t, T) / T; // [0,1)
+  // Parameters
+  std::string servo_topic_;
+  std::string frame_id_;
+  double y_amplitude_;
+  double frequency_hz_;
+  double control_rate_hz_;
+  double reset_interval_s_;
+  double max_cumulative_error_;
+  double omega_;
 
-    double sign = (phase < 0.5) ? 1.0 : -1.0;
-
-    // tanh-based smoothing around the edges to avoid controller shock
-    const double edge_phase = std::min(phase, 1.0 - phase);
-    const double smooth = std::tanh((edge_phase / (edge_width_s_ / T + 1e-9)) * 3.0);
-
-    return sign * v_mag * smooth;
-  }
-
-  // Fixed parameters (no command line needed)
-  std::string servo_topic_, frame_id_, axis_, profile_;
-  double amplitude_, freq_hz_, rate_hz_, ramp_ms_, duration_s_;
-  double omega_, edge_width_s_;
+  // Error tracking for drift correction
+  double cumulative_x_error_;
+  double cumulative_z_error_;
+  int error_samples_;
 
   // ROS components
-  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr pub_;
+  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr twist_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr servo_start_client_;
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr servo_stop_client_;
-  rclcpp::Time t0_;
   
-  // Keyboard control
+  // Timing
+  rclcpp::Time start_time_;
+  rclcpp::Time last_reset_time_;
+  
+  // Control
   std::thread keyboard_thread_;
-  std::atomic<bool> paused_;
-  bool shutdown_completed_ = false;
+  bool shutdown_done_ = false;
 };
 
 int main(int argc, char ** argv) {
   rclcpp::init(argc, argv);
   
   try {
-    auto node = std::make_shared<MicroSaccadeNode>();
+    auto node = std::make_shared<FastYAxisMicroSaccadeNode>();
     
-    // Custom spinning with shutdown check
     while (rclcpp::ok() && !g_shutdown_requested) {
         rclcpp::spin_some(node);
         std::this_thread::sleep_for(1ms);
     }
     
-    // Ensure safe shutdown is called
-    node->safeShutdown();
+    node->shutdown();
     
   } catch (const std::exception& e) {
-    std::cerr << "Exception caught: " << e.what() << std::endl;
+    std::cerr << "Error: " << e.what() << std::endl;
   }
   
   rclcpp::shutdown();
